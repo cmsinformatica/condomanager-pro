@@ -1,10 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useCondo } from '../context/CondoDataContext';
 import Modal from '../components/Modal';
-import { APARTMENT_NUMBERS, EXPENSE_CATEGORIES } from '../constants';
+import { APARTMENT_NUMBERS, EXPENSE_CATEGORIES, MONTH_NAMES } from '../constants';
 import type { Payment, Expense } from '../types';
-import { PlusCircle, Trash2, Edit2 } from 'lucide-react';
+import { PlusCircle, Trash2, Edit2, Calendar, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 
 const Finances: React.FC = () => {
   const [activeTab, setActiveTab] = useState('income');
@@ -13,6 +13,10 @@ const Finances: React.FC = () => {
   const [isExpenseModalOpen, setExpenseModalOpen] = useState(false);
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  
+  // Filtros de mês e ano
+  const [filterMonth, setFilterMonth] = useState<number | null>(null); // null = todos os meses
+  const [filterYear, setFilterYear] = useState<number | null>(null); // null = todos os anos
 
   const [newPayment, setNewPayment] = useState<Omit<Payment, 'id'>>({
     apartmentNumber: 1,
@@ -106,6 +110,52 @@ const Finances: React.FC = () => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   }
 
+  // Filtrar pagamentos e despesas
+  const filteredPayments = useMemo(() => {
+    if (filterMonth === null && filterYear === null) return payments;
+    
+    return payments.filter(p => {
+      const paymentDate = new Date(p.date);
+      const paymentMonth = paymentDate.getMonth() + 1;
+      const paymentYear = paymentDate.getFullYear();
+      
+      const monthMatch = filterMonth === null || (p.month ? p.month === filterMonth : paymentMonth === filterMonth);
+      const yearMatch = filterYear === null || (p.year ? p.year === filterYear : paymentYear === filterYear);
+      
+      return monthMatch && yearMatch;
+    });
+  }, [payments, filterMonth, filterYear]);
+
+  const filteredExpenses = useMemo(() => {
+    if (filterMonth === null && filterYear === null) return expenses;
+    
+    return expenses.filter(e => {
+      const expenseDate = new Date(e.date);
+      const expenseMonth = expenseDate.getMonth() + 1;
+      const expenseYear = expenseDate.getFullYear();
+      
+      const monthMatch = filterMonth === null || expenseMonth === filterMonth;
+      const yearMatch = filterYear === null || expenseYear === filterYear;
+      
+      return monthMatch && yearMatch;
+    });
+  }, [expenses, filterMonth, filterYear]);
+
+  // Gerar lista de anos disponíveis
+  const availableYears = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = currentYear - 5; i <= currentYear + 2; i++) {
+      years.push(i);
+    }
+    return years;
+  }, []);
+
+  const handleResetFilters = () => {
+    setFilterMonth(null);
+    setFilterYear(null);
+  };
+
   const tabClasses = (tabName: string) => 
     `px-4 py-2 text-sm font-medium rounded-t-lg ${
       activeTab === tabName
@@ -126,18 +176,65 @@ const Finances: React.FC = () => {
         </button>
       </div>
 
+      {/* Filtros de Mês e Ano */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg mb-4">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-2">
+            <Filter className="w-5 h-5 text-gray-500" />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Filtrar:</span>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <select
+              value={filterMonth || ''}
+              onChange={(e) => setFilterMonth(e.target.value ? Number(e.target.value) : null)}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">Todos os meses</option>
+              {MONTH_NAMES.map((month, index) => (
+                <option key={index} value={index + 1}>{month}</option>
+              ))}
+            </select>
+
+            <select
+              value={filterYear || ''}
+              onChange={(e) => setFilterYear(e.target.value ? Number(e.target.value) : null)}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">Todos os anos</option>
+              {availableYears.map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+
+            {(filterMonth !== null || filterYear !== null) && (
+              <button
+                onClick={handleResetFilters}
+                className="px-4 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                Limpar Filtros
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className="border-b border-gray-200 dark:border-gray-700 mb-4">
         <nav className="-mb-px flex space-x-6" aria-label="Tabs">
-          <button className={tabClasses('income')} onClick={() => setActiveTab('income')}>Receitas</button>
-          <button className={tabClasses('expenses')} onClick={() => setActiveTab('expenses')}>Despesas</button>
+          <button className={tabClasses('income')} onClick={() => setActiveTab('income')}>
+            Receitas {filterMonth !== null || filterYear !== null ? `(${filteredPayments.length})` : `(${payments.length})`}
+          </button>
+          <button className={tabClasses('expenses')} onClick={() => setActiveTab('expenses')}>
+            Despesas {filterMonth !== null || filterYear !== null ? `(${filteredExpenses.length})` : `(${expenses.length})`}
+          </button>
         </nav>
       </div>
 
       <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
         {activeTab === 'income' ? (
-          <IncomeTable payments={payments} deletePayment={deletePayment} editPayment={handleEditPayment} formatCurrency={formatCurrency} />
+          <IncomeTable payments={filteredPayments} deletePayment={deletePayment} editPayment={handleEditPayment} formatCurrency={formatCurrency} />
         ) : (
-          <ExpenseTable expenses={expenses} deleteExpense={deleteExpense} editExpense={handleEditExpense} formatCurrency={formatCurrency} />
+          <ExpenseTable expenses={filteredExpenses} deleteExpense={deleteExpense} editExpense={handleEditExpense} formatCurrency={formatCurrency} />
         )}
       </div>
 

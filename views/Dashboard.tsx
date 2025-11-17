@@ -1,15 +1,18 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useCondo } from '../context/CondoDataContext';
 import DashboardCard from '../components/DashboardCard';
-import { DollarSign, Landmark, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { DollarSign, Landmark, ArrowUpCircle, ArrowDownCircle, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { MONTH_NAMES } from '../constants';
 
 const Dashboard: React.FC = () => {
   const { payments, expenses, loading } = useCondo();
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1); // 1-12
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  
+  const currentMonth = selectedMonth - 1; // Para usar com Date (0-11)
+  const currentYear = selectedYear;
 
   const monthlyData = useMemo(() => {
     // Usar month e year dos payments quando disponível, senão calcular da data
@@ -67,6 +70,40 @@ const Dashboard: React.FC = () => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   }
 
+  // Gerar lista de anos (últimos 5 anos até próximos 2 anos)
+  const availableYears = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = currentYear - 5; i <= currentYear + 2; i++) {
+      years.push(i);
+    }
+    return years;
+  }, []);
+
+  const handlePreviousMonth = () => {
+    if (selectedMonth === 1) {
+      setSelectedMonth(12);
+      setSelectedYear(selectedYear - 1);
+    } else {
+      setSelectedMonth(selectedMonth - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (selectedMonth === 12) {
+      setSelectedMonth(1);
+      setSelectedYear(selectedYear + 1);
+    } else {
+      setSelectedMonth(selectedMonth + 1);
+    }
+  };
+
+  const handleResetToCurrent = () => {
+    const now = new Date();
+    setSelectedMonth(now.getMonth() + 1);
+    setSelectedYear(now.getFullYear());
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -78,9 +115,71 @@ const Dashboard: React.FC = () => {
     );
   }
 
+  const isCurrentMonth = selectedMonth === new Date().getMonth() + 1 && selectedYear === new Date().getFullYear();
+
   return (
     <div>
-      <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-6">Painel do Administrador</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Painel do Administrador</h1>
+      </div>
+
+      {/* Filtros de Mês e Ano */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg mb-6">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-gray-500" />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Filtrar por:</span>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handlePreviousMonth}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              title="Mês anterior"
+            >
+              <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            </button>
+            
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(Number(e.target.value))}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              {MONTH_NAMES.map((month, index) => (
+                <option key={index} value={index + 1}>{month}</option>
+              ))}
+            </select>
+
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              {availableYears.map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+
+            <button
+              onClick={handleNextMonth}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              title="Próximo mês"
+            >
+              <ChevronRight className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            </button>
+
+            {!isCurrentMonth && (
+              <button
+                onClick={handleResetToCurrent}
+                className="px-4 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              >
+                Mês Atual
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">
         Resumo do Mês ({MONTH_NAMES[currentMonth]} {currentYear})
       </h2>
@@ -90,7 +189,7 @@ const Dashboard: React.FC = () => {
         <DashboardCard title="Saldo Mensal" value={formatCurrency(monthlyData.balance)} icon={<DollarSign />} color={monthlyData.balance >= 0 ? "bg-blue-500" : "bg-yellow-500"}/>
       </div>
 
-      <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Visão Geral Financeira Anual ({currentYear})</h2>
+      <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Visão Geral Financeira Anual ({selectedYear})</h2>
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
         <ResponsiveContainer width="100%" height={400}>
           <BarChart data={annualChartData}>
