@@ -17,14 +17,19 @@ const Login: React.FC = () => {
     }
   }, [currentUser, loading, navigate]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const loggedIn = login(email, password);
-    if (loggedIn) {
-      navigate('/');
-    } else {
-      setError('Credenciais inválidas. Tente novamente.');
+    try {
+      const loggedIn = await login(email, password);
+      if (loggedIn) {
+        navigate('/');
+      } else {
+        setError('Credenciais inválidas. Tente novamente.');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('Erro ao fazer login. Tente novamente.');
     }
   };
 

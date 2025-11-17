@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { hashPassword, isHashed } from '../lib/passwordUtils';
 import type { Resident, Payment, Expense, User } from '../types';
 import { UserRole } from '../types';
 
@@ -67,7 +68,8 @@ const mapUserFromDB = (data: any): User => ({
   name: data.name,
   email: data.email,
   role: data.role as UserRole,
-  apartmentNumber: data.apartment_number
+  apartmentNumber: data.apartment_number,
+  password: data.password || undefined
 });
 
 export const useCondoData = () => {
@@ -366,13 +368,24 @@ export const useCondoData = () => {
   const addUser = async (user: Omit<User, 'id'>) => {
     if (useSupabase && supabase) {
       try {
+        // Hash da senha se fornecida e ainda não estiver em hash
+        let passwordToStore = null;
+        if (user.password) {
+          if (isHashed(user.password)) {
+            passwordToStore = user.password; // Já está em hash
+          } else {
+            passwordToStore = await hashPassword(user.password); // Fazer hash
+          }
+        }
+
         const { data, error } = await supabase
           .from('users')
           .insert([{
             name: user.name,
             email: user.email,
             role: user.role,
-            apartment_number: user.apartmentNumber
+            apartment_number: user.apartmentNumber,
+            password: passwordToStore
           }])
           .select()
           .single();
@@ -383,7 +396,12 @@ export const useCondoData = () => {
         console.error('Error adding user:', error);
       }
     } else {
-      const newUser = { ...user, id: `usr-${Date.now()}` };
+      // Para localStorage, também fazer hash
+      let passwordToStore = user.password;
+      if (user.password && !isHashed(user.password)) {
+        passwordToStore = await hashPassword(user.password);
+      }
+      const newUser = { ...user, password: passwordToStore, id: `usr-${Date.now()}` };
       setUsers(prev => [...prev, newUser]);
     }
   };
@@ -391,14 +409,29 @@ export const useCondoData = () => {
   const updateUser = async (id: string, user: Omit<User, 'id'>) => {
     if (useSupabase && supabase) {
       try {
+        const updateData: any = {
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          apartment_number: user.apartmentNumber
+        };
+        
+        // Incluir password apenas se fornecido
+        if (user.password !== undefined && user.password !== null && user.password !== '') {
+          // Se já está em hash, usar diretamente, senão fazer hash
+          if (isHashed(user.password)) {
+            updateData.password = user.password;
+          } else {
+            updateData.password = await hashPassword(user.password);
+          }
+        } else if (user.password === null || user.password === '') {
+          // Se password é null ou vazio, não atualizar o campo
+          // (mantém a senha atual)
+        }
+        
         const { data, error } = await supabase
           .from('users')
-          .update({
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            apartment_number: user.apartmentNumber
-          })
+          .update(updateData)
           .eq('id', id)
           .select()
           .single();
@@ -409,7 +442,12 @@ export const useCondoData = () => {
         console.error('Error updating user:', error);
       }
     } else {
-      setUsers(prev => prev.map(u => u.id === id ? { ...user, id } : u));
+      // Para localStorage, também fazer hash se necessário
+      let passwordToStore = user.password;
+      if (user.password && !isHashed(user.password)) {
+        passwordToStore = await hashPassword(user.password);
+      }
+      setUsers(prev => prev.map(u => u.id === id ? { ...user, password: passwordToStore, id } : u));
     }
   };
 

@@ -34,4 +34,5 @@ export interface User {
   email: string;
   role: UserRole;
   apartmentNumber?: number;
+  password?: string; // Senha (hash em produção)
 }

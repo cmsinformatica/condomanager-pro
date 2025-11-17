@@ -4,18 +4,25 @@ import { useCondo } from '../context/CondoDataContext';
 import Modal from '../components/Modal';
 import { UserRole } from '../types';
 import type { User } from '../types';
-import { PlusCircle, Trash2, Edit2 } from 'lucide-react';
+import { PlusCircle, Trash2, Edit2, Key } from 'lucide-react';
 import { APARTMENT_NUMBERS } from '../constants';
+import { useAuth } from '../hooks/useAuth';
 
 const UserManagement: React.FC = () => {
   const { users, addUser, updateUser, deleteUser } = useCondo();
+  const { changePassword } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [passwordUser, setPasswordUser] = useState<User | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [newUser, setNewUser] = useState<Omit<User, 'id'>>({
     name: '',
     email: '',
     role: UserRole.RESIDENT,
-    apartmentNumber: 1
+    apartmentNumber: 1,
+    password: ''
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -36,13 +43,23 @@ const UserManagement: React.FC = () => {
     e.preventDefault();
     if (newUser.name && newUser.email) {
       if (editingUser) {
-        updateUser(editingUser.id, newUser);
+        // Se estiver editando e não forneceu nova senha, não atualizar senha
+        const userToUpdate = { ...newUser };
+        if (!userToUpdate.password || userToUpdate.password.trim() === '') {
+          delete userToUpdate.password;
+        }
+        updateUser(editingUser.id, userToUpdate);
         setEditingUser(null);
       } else {
+        // Ao criar, senha é obrigatória
+        if (!newUser.password || newUser.password.trim() === '') {
+          alert('Por favor, informe uma senha para o usuário.');
+          return;
+        }
         addUser(newUser);
       }
       setIsModalOpen(false);
-      setNewUser({ name: '', email: '', role: UserRole.RESIDENT, apartmentNumber: 1 });
+      setNewUser({ name: '', email: '', role: UserRole.RESIDENT, apartmentNumber: 1, password: '' });
     }
   };
 
@@ -52,7 +69,8 @@ const UserManagement: React.FC = () => {
       name: user.name,
       email: user.email,
       role: user.role,
-      apartmentNumber: user.apartmentNumber || 1
+      apartmentNumber: user.apartmentNumber || 1,
+      password: '' // Não mostrar senha ao editar
     });
     setIsModalOpen(true);
   };
@@ -60,7 +78,47 @@ const UserManagement: React.FC = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingUser(null);
-    setNewUser({ name: '', email: '', role: UserRole.RESIDENT, apartmentNumber: 1 });
+    setNewUser({ name: '', email: '', role: UserRole.RESIDENT, apartmentNumber: 1, password: '' });
+  };
+
+  const handleChangePassword = (user: User) => {
+    setPasswordUser(user);
+    setNewPassword('');
+    setConfirmPassword('');
+    setIsPasswordModalOpen(true);
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordUser) return;
+
+    if (newPassword.length < 4) {
+      alert('A senha deve ter pelo menos 4 caracteres.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      alert('As senhas não coincidem.');
+      return;
+    }
+
+    const success = await changePassword(passwordUser.id, newPassword);
+    if (success) {
+      alert('Senha alterada com sucesso!');
+      setIsPasswordModalOpen(false);
+      setPasswordUser(null);
+      setNewPassword('');
+      setConfirmPassword('');
+    } else {
+      alert('Erro ao alterar senha. Tente novamente.');
+    }
+  };
+
+  const handleClosePasswordModal = () => {
+    setIsPasswordModalOpen(false);
+    setPasswordUser(null);
+    setNewPassword('');
+    setConfirmPassword('');
   };
 
   return (
@@ -100,10 +158,13 @@ const UserManagement: React.FC = () => {
                 <td className="px-5 py-5 border-b border-gray-200 dark:border-gray-600 text-sm"><p className="text-gray-900 dark:text-white">{user.apartmentNumber || 'N/D'}</p></td>
                 <td className="px-5 py-5 border-b border-gray-200 dark:border-gray-600 text-sm text-right">
                   <div className="flex justify-end gap-2">
-                    <button onClick={() => handleEdit(user)} className="text-blue-500 hover:text-blue-700">
+                    <button onClick={() => handleEdit(user)} className="text-blue-500 hover:text-blue-700" title="Editar usuário">
                       <Edit2 className="w-5 h-5" />
                     </button>
-                    <button onClick={() => deleteUser(user.id)} className="text-red-500 hover:text-red-700"><Trash2 className="w-5 h-5" /></button>
+                    <button onClick={() => handleChangePassword(user)} className="text-purple-500 hover:text-purple-700" title="Trocar senha">
+                      <Key className="w-5 h-5" />
+                    </button>
+                    <button onClick={() => deleteUser(user.id)} className="text-red-500 hover:text-red-700" title="Excluir usuário"><Trash2 className="w-5 h-5" /></button>
                   </div>
                 </td>
               </tr>
@@ -137,9 +198,55 @@ const UserManagement: React.FC = () => {
                     </select>
                 </div>
             )}
+            <div className="mb-4">
+                <label className="block text-sm font-bold mb-2">
+                    {editingUser ? "Nova Senha (deixe em branco para não alterar)" : "Senha"}
+                </label>
+                <input 
+                  type="password" 
+                  name="password" 
+                  value={newUser.password} 
+                  onChange={handleInputChange} 
+                  className="w-full p-2 border rounded bg-white dark:bg-gray-700" 
+                  placeholder={editingUser ? "Deixe em branco para manter a senha atual" : "Digite a senha"}
+                  required={!editingUser}
+                />
+            </div>
             <div className="flex justify-end mt-6">
                 <button type="submit" className="bg-primary-600 text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700">{editingUser ? "Salvar Alterações" : "Adicionar Usuário"}</button>
             </div>
+        </form>
+      </Modal>
+
+      <Modal isOpen={isPasswordModalOpen} onClose={handleClosePasswordModal} title={`Trocar Senha - ${passwordUser?.name}`}>
+        <form onSubmit={handlePasswordSubmit}>
+          <div className="mb-4">
+            <label className="block text-sm font-bold mb-2">Nova Senha</label>
+            <input 
+              type="password" 
+              value={newPassword} 
+              onChange={e => setNewPassword(e.target.value)} 
+              className="w-full p-2 border rounded bg-white dark:bg-gray-700" 
+              required
+              minLength={4}
+              placeholder="Mínimo 4 caracteres"
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-bold mb-2">Confirmar Nova Senha</label>
+            <input 
+              type="password" 
+              value={confirmPassword} 
+              onChange={e => setConfirmPassword(e.target.value)} 
+              className="w-full p-2 border rounded bg-white dark:bg-gray-700" 
+              required
+              minLength={4}
+              placeholder="Digite a senha novamente"
+            />
+          </div>
+          <div className="flex justify-end mt-6">
+            <button type="submit" className="bg-purple-600 text-white px-4 py-2 rounded-lg shadow hover:bg-purple-700">Alterar Senha</button>
+          </div>
         </form>
       </Modal>
     </div>
