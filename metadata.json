@@ -1,0 +1,6 @@
+
+{
+  "name": "CondoManager Pro",
+  "description": "Uma aplicação web para gestão de condomínios, permitindo que administradores gerenciem moradores, controlem taxas mensais e despesas, e visualizem painéis financeiros. Moradores podem ver um resumo das despesas mensais.",
+  "requestFramePermissions": []
+}
