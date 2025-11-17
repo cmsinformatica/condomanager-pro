@@ -7,17 +7,27 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { MONTH_NAMES } from '../constants';
 
 const Dashboard: React.FC = () => {
-  const { payments, expenses } = useCondo();
+  const { payments, expenses, loading } = useCondo();
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
 
   const monthlyData = useMemo(() => {
+    // Usar month e year dos payments quando disponível, senão calcular da data
     const monthlyIncome = payments
-      .filter(p => new Date(p.date).getMonth() === currentMonth && new Date(p.date).getFullYear() === currentYear)
+      .filter(p => {
+        if (p.month && p.year) {
+          return p.month === currentMonth + 1 && p.year === currentYear;
+        }
+        const paymentDate = new Date(p.date);
+        return paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear;
+      })
       .reduce((sum, p) => sum + p.amount, 0);
 
     const monthlyExpenses = expenses
-      .filter(e => new Date(e.date).getMonth() === currentMonth && new Date(e.date).getFullYear() === currentYear)
+      .filter(e => {
+        const expenseDate = new Date(e.date);
+        return expenseDate.getMonth() === currentMonth && expenseDate.getFullYear() === currentYear;
+      })
       .reduce((sum, e) => sum + e.amount, 0);
 
     return {
@@ -29,11 +39,21 @@ const Dashboard: React.FC = () => {
 
   const annualChartData = useMemo(() => {
     return MONTH_NAMES.map((month, index) => {
+      const monthNumber = index + 1; // Mês 1-12
       const monthlyIncome = payments
-        .filter(p => new Date(p.date).getMonth() === index && new Date(p.date).getFullYear() === currentYear)
+        .filter(p => {
+          if (p.month && p.year) {
+            return p.month === monthNumber && p.year === currentYear;
+          }
+          const paymentDate = new Date(p.date);
+          return paymentDate.getMonth() === index && paymentDate.getFullYear() === currentYear;
+        })
         .reduce((sum, p) => sum + p.amount, 0);
       const monthlyExpenses = expenses
-        .filter(e => new Date(e.date).getMonth() === index && new Date(e.date).getFullYear() === currentYear)
+        .filter(e => {
+          const expenseDate = new Date(e.date);
+          return expenseDate.getMonth() === index && expenseDate.getFullYear() === currentYear;
+        })
         .reduce((sum, e) => sum + e.amount, 0);
       return {
         name: month.substring(0, 3),
@@ -45,6 +65,17 @@ const Dashboard: React.FC = () => {
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Carregando dados...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
