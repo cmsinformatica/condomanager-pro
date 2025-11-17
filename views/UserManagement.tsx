@@ -4,12 +4,13 @@ import { useCondo } from '../context/CondoDataContext';
 import Modal from '../components/Modal';
 import { UserRole } from '../types';
 import type { User } from '../types';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, Edit2 } from 'lucide-react';
 import { APARTMENT_NUMBERS } from '../constants';
 
 const UserManagement: React.FC = () => {
-  const { users, addUser, deleteUser } = useCondo();
+  const { users, addUser, updateUser, deleteUser } = useCondo();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [newUser, setNewUser] = useState<Omit<User, 'id'>>({
     name: '',
     email: '',
@@ -34,10 +35,32 @@ const UserManagement: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (newUser.name && newUser.email) {
-      addUser(newUser);
+      if (editingUser) {
+        updateUser(editingUser.id, newUser);
+        setEditingUser(null);
+      } else {
+        addUser(newUser);
+      }
       setIsModalOpen(false);
       setNewUser({ name: '', email: '', role: UserRole.RESIDENT, apartmentNumber: 1 });
     }
+  };
+
+  const handleEdit = (user: User) => {
+    setEditingUser(user);
+    setNewUser({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      apartmentNumber: user.apartmentNumber || 1
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingUser(null);
+    setNewUser({ name: '', email: '', role: UserRole.RESIDENT, apartmentNumber: 1 });
   };
 
   return (
@@ -76,7 +99,12 @@ const UserManagement: React.FC = () => {
                 </td>
                 <td className="px-5 py-5 border-b border-gray-200 dark:border-gray-600 text-sm"><p className="text-gray-900 dark:text-white">{user.apartmentNumber || 'N/D'}</p></td>
                 <td className="px-5 py-5 border-b border-gray-200 dark:border-gray-600 text-sm text-right">
-                  <button onClick={() => deleteUser(user.id)} className="text-red-500 hover:text-red-700"><Trash2 className="w-5 h-5" /></button>
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => handleEdit(user)} className="text-blue-500 hover:text-blue-700">
+                      <Edit2 className="w-5 h-5" />
+                    </button>
+                    <button onClick={() => deleteUser(user.id)} className="text-red-500 hover:text-red-700"><Trash2 className="w-5 h-5" /></button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -84,7 +112,7 @@ const UserManagement: React.FC = () => {
         </table>
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Adicionar Novo Usuário">
+      <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingUser ? "Editar Usuário" : "Adicionar Novo Usuário"}>
         <form onSubmit={handleSubmit}>
             <div className="mb-4">
                 <label className="block text-sm font-bold mb-2">Nome</label>
@@ -110,7 +138,7 @@ const UserManagement: React.FC = () => {
                 </div>
             )}
             <div className="flex justify-end mt-6">
-                <button type="submit" className="bg-primary-600 text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700">Adicionar Usuário</button>
+                <button type="submit" className="bg-primary-600 text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700">{editingUser ? "Salvar Alterações" : "Adicionar Usuário"}</button>
             </div>
         </form>
       </Modal>

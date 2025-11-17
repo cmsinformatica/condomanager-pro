@@ -183,6 +183,30 @@ export const useCondoData = () => {
     }
   };
 
+  const updateResident = async (id: string, resident: Omit<Resident, 'id'>) => {
+    if (useSupabase && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('residents')
+          .update({
+            owner_name: resident.ownerName,
+            tenant_name: resident.tenantName,
+            apartment_number: resident.apartmentNumber
+          })
+          .eq('id', id)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        setResidents(prev => prev.map(r => r.id === id ? mapResidentFromDB(data) : r));
+      } catch (error) {
+        console.error('Error updating resident:', error);
+      }
+    } else {
+      setResidents(prev => prev.map(r => r.id === id ? { ...resident, id } : r));
+    }
+  };
+
   const deleteResident = async (id: string) => {
     if (useSupabase && supabase) {
       try {
@@ -224,6 +248,32 @@ export const useCondoData = () => {
     } else {
       const newPayment = { ...payment, id: `pay-${Date.now()}` };
       setPayments(prev => [...prev, newPayment]);
+    }
+  };
+
+  const updatePayment = async (id: string, payment: Omit<Payment, 'id'>) => {
+    if (useSupabase && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('payments')
+          .update({
+            apartment_number: payment.apartmentNumber,
+            amount: payment.amount,
+            date: payment.date,
+            month: payment.month,
+            year: payment.year
+          })
+          .eq('id', id)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        setPayments(prev => prev.map(p => p.id === id ? mapPaymentFromDB(data) : p));
+      } catch (error) {
+        console.error('Error updating payment:', error);
+      }
+    } else {
+      setPayments(prev => prev.map(p => p.id === id ? { ...payment, id } : p));
     }
   };
 
@@ -270,6 +320,31 @@ export const useCondoData = () => {
     }
   };
 
+  const updateExpense = async (id: string, expense: Omit<Expense, 'id'>) => {
+    if (useSupabase && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('expenses')
+          .update({
+            description: expense.description,
+            amount: expense.amount,
+            category: expense.category,
+            date: expense.date
+          })
+          .eq('id', id)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        setExpenses(prev => prev.map(e => e.id === id ? mapExpenseFromDB(data) : e));
+      } catch (error) {
+        console.error('Error updating expense:', error);
+      }
+    } else {
+      setExpenses(prev => prev.map(e => e.id === id ? { ...expense, id } : e));
+    }
+  };
+
   const deleteExpense = async (id: string) => {
     if (useSupabase && supabase) {
       try {
@@ -313,6 +388,31 @@ export const useCondoData = () => {
     }
   };
 
+  const updateUser = async (id: string, user: Omit<User, 'id'>) => {
+    if (useSupabase && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .update({
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            apartment_number: user.apartmentNumber
+          })
+          .eq('id', id)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        setUsers(prev => prev.map(u => u.id === id ? mapUserFromDB(data) : u));
+      } catch (error) {
+        console.error('Error updating user:', error);
+      }
+    } else {
+      setUsers(prev => prev.map(u => u.id === id ? { ...user, id } : u));
+    }
+  };
+
   const deleteUser = async (id: string) => {
     if (useSupabase && supabase) {
       try {
@@ -341,6 +441,10 @@ export const useCondoData = () => {
     addPayment, 
     addExpense, 
     addUser,
+    updateResident,
+    updatePayment,
+    updateExpense,
+    updateUser,
     deleteResident, 
     deletePayment, 
     deleteExpense, 

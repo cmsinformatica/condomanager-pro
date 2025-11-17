@@ -4,11 +4,12 @@ import { useCondo } from '../context/CondoDataContext';
 import Modal from '../components/Modal';
 import { APARTMENT_NUMBERS } from '../constants';
 import type { Resident } from '../types';
-import { PlusCircle, Trash2, User, Building2 } from 'lucide-react';
+import { PlusCircle, Trash2, User, Building2, Edit2 } from 'lucide-react';
 
 const Residents: React.FC = () => {
-  const { residents, addResident, deleteResident } = useCondo();
+  const { residents, addResident, updateResident, deleteResident } = useCondo();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingResident, setEditingResident] = useState<Resident | null>(null);
   const [newResident, setNewResident] = useState<Omit<Resident, 'id'>>({
     ownerName: '',
     tenantName: '',
@@ -23,10 +24,31 @@ const Residents: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (newResident.ownerName && newResident.apartmentNumber) {
-      addResident(newResident);
+      if (editingResident) {
+        updateResident(editingResident.id, newResident);
+        setEditingResident(null);
+      } else {
+        addResident(newResident);
+      }
       setNewResident({ ownerName: '', tenantName: '', apartmentNumber: 1 });
       setIsModalOpen(false);
     }
+  };
+
+  const handleEdit = (resident: Resident) => {
+    setEditingResident(resident);
+    setNewResident({
+      ownerName: resident.ownerName,
+      tenantName: resident.tenantName || '',
+      apartmentNumber: resident.apartmentNumber,
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingResident(null);
+    setNewResident({ ownerName: '', tenantName: '', apartmentNumber: 1 });
   };
   
   return (
@@ -71,9 +93,14 @@ const Residents: React.FC = () => {
                   <p className="text-gray-900 dark:text-white whitespace-no-wrap">{resident.tenantName || 'N/D'}</p>
                 </td>
                 <td className="px-5 py-5 border-b border-gray-200 dark:border-gray-600 text-sm text-right">
-                  <button onClick={() => deleteResident(resident.id)} className="text-red-500 hover:text-red-700">
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => handleEdit(resident)} className="text-blue-500 hover:text-blue-700">
+                      <Edit2 className="w-5 h-5" />
+                    </button>
+                    <button onClick={() => deleteResident(resident.id)} className="text-red-500 hover:text-red-700">
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -81,7 +108,7 @@ const Residents: React.FC = () => {
         </table>
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Adicionar Novo Morador">
+      <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingResident ? "Editar Morador" : "Adicionar Novo Morador"}>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="apartmentNumber">
@@ -127,7 +154,7 @@ const Residents: React.FC = () => {
           </div>
           <div className="flex justify-end mt-6">
             <button type="submit" className="bg-primary-600 text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
-              Adicionar Morador
+              {editingResident ? "Salvar Alterações" : "Adicionar Morador"}
             </button>
           </div>
         </form>

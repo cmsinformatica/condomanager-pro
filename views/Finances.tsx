@@ -4,13 +4,15 @@ import { useCondo } from '../context/CondoDataContext';
 import Modal from '../components/Modal';
 import { APARTMENT_NUMBERS, EXPENSE_CATEGORIES } from '../constants';
 import type { Payment, Expense } from '../types';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, Edit2 } from 'lucide-react';
 
 const Finances: React.FC = () => {
   const [activeTab, setActiveTab] = useState('income');
-  const { payments, expenses, addPayment, deletePayment, addExpense, deleteExpense } = useCondo();
+  const { payments, expenses, addPayment, updatePayment, deletePayment, addExpense, updateExpense, deleteExpense } = useCondo();
   const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
   const [isExpenseModalOpen, setExpenseModalOpen] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
   const [newPayment, setNewPayment] = useState<Omit<Payment, 'id'>>({
     apartmentNumber: 1,
@@ -29,7 +31,13 @@ const Finances: React.FC = () => {
 
   const handlePaymentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    addPayment({ ...newPayment, amount: Number(newPayment.amount) });
+    const paymentData = { ...newPayment, amount: Number(newPayment.amount) };
+    if (editingPayment) {
+      updatePayment(editingPayment.id, paymentData);
+      setEditingPayment(null);
+    } else {
+      addPayment(paymentData);
+    }
     setPaymentModalOpen(false);
     setNewPayment({
       apartmentNumber: 1, amount: 0, date: new Date().toISOString().split('T')[0],
@@ -39,8 +47,56 @@ const Finances: React.FC = () => {
 
   const handleExpenseSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    addExpense({ ...newExpense, amount: Number(newExpense.amount) });
+    const expenseData = { ...newExpense, amount: Number(newExpense.amount) };
+    if (editingExpense) {
+      updateExpense(editingExpense.id, expenseData);
+      setEditingExpense(null);
+    } else {
+      addExpense(expenseData);
+    }
     setExpenseModalOpen(false);
+    setNewExpense({
+      description: '', amount: 0, category: EXPENSE_CATEGORIES[0], date: new Date().toISOString().split('T')[0]
+    });
+  };
+
+  const handleEditPayment = (payment: Payment) => {
+    setEditingPayment(payment);
+    const paymentDate = new Date(payment.date);
+    setNewPayment({
+      apartmentNumber: payment.apartmentNumber,
+      amount: payment.amount,
+      date: paymentDate.toISOString().split('T')[0],
+      month: payment.month || paymentDate.getMonth() + 1,
+      year: payment.year || paymentDate.getFullYear()
+    });
+    setPaymentModalOpen(true);
+  };
+
+  const handleEditExpense = (expense: Expense) => {
+    setEditingExpense(expense);
+    const expenseDate = new Date(expense.date);
+    setNewExpense({
+      description: expense.description,
+      amount: expense.amount,
+      category: expense.category,
+      date: expenseDate.toISOString().split('T')[0]
+    });
+    setExpenseModalOpen(true);
+  };
+
+  const handleClosePaymentModal = () => {
+    setPaymentModalOpen(false);
+    setEditingPayment(null);
+    setNewPayment({
+      apartmentNumber: 1, amount: 0, date: new Date().toISOString().split('T')[0],
+      month: new Date().getMonth() + 1, year: new Date().getFullYear()
+    });
+  };
+
+  const handleCloseExpenseModal = () => {
+    setExpenseModalOpen(false);
+    setEditingExpense(null);
     setNewExpense({
       description: '', amount: 0, category: EXPENSE_CATEGORIES[0], date: new Date().toISOString().split('T')[0]
     });
@@ -79,13 +135,13 @@ const Finances: React.FC = () => {
 
       <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
         {activeTab === 'income' ? (
-          <IncomeTable payments={payments} deletePayment={deletePayment} formatCurrency={formatCurrency} />
+          <IncomeTable payments={payments} deletePayment={deletePayment} editPayment={handleEditPayment} formatCurrency={formatCurrency} />
         ) : (
-          <ExpenseTable expenses={expenses} deleteExpense={deleteExpense} formatCurrency={formatCurrency} />
+          <ExpenseTable expenses={expenses} deleteExpense={deleteExpense} editExpense={handleEditExpense} formatCurrency={formatCurrency} />
         )}
       </div>
 
-      <Modal isOpen={isPaymentModalOpen} onClose={() => setPaymentModalOpen(false)} title="Adicionar Novo Pagamento">
+      <Modal isOpen={isPaymentModalOpen} onClose={handleClosePaymentModal} title={editingPayment ? "Editar Pagamento" : "Adicionar Novo Pagamento"}>
         <form onSubmit={handlePaymentSubmit}>
             <div className="mb-4">
                 <label className="block text-sm font-bold mb-2">Apartamento</label>
@@ -99,15 +155,29 @@ const Finances: React.FC = () => {
             </div>
             <div className="mb-4">
                 <label className="block text-sm font-bold mb-2">Data</label>
-                <input type="date" value={newPayment.date} onChange={e => setNewPayment({...newPayment, date: e.target.value})} className="w-full p-2 border rounded bg-white dark:bg-gray-700" required/>
+                <input 
+                  type="date" 
+                  value={newPayment.date} 
+                  onChange={e => {
+                    const selectedDate = new Date(e.target.value);
+                    setNewPayment({
+                      ...newPayment, 
+                      date: e.target.value,
+                      month: selectedDate.getMonth() + 1,
+                      year: selectedDate.getFullYear()
+                    });
+                  }} 
+                  className="w-full p-2 border rounded bg-white dark:bg-gray-700" 
+                  required
+                />
             </div>
             <div className="flex justify-end mt-6">
-                <button type="submit" className="bg-primary-600 text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700">Adicionar Pagamento</button>
+                <button type="submit" className="bg-primary-600 text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700">{editingPayment ? "Salvar Alterações" : "Adicionar Pagamento"}</button>
             </div>
         </form>
       </Modal>
 
-      <Modal isOpen={isExpenseModalOpen} onClose={() => setExpenseModalOpen(false)} title="Adicionar Nova Despesa">
+      <Modal isOpen={isExpenseModalOpen} onClose={handleCloseExpenseModal} title={editingExpense ? "Editar Despesa" : "Adicionar Nova Despesa"}>
         <form onSubmit={handleExpenseSubmit}>
             <div className="mb-4">
                 <label className="block text-sm font-bold mb-2">Descrição</label>
@@ -128,7 +198,7 @@ const Finances: React.FC = () => {
                 <input type="date" value={newExpense.date} onChange={e => setNewExpense({...newExpense, date: e.target.value})} className="w-full p-2 border rounded bg-white dark:bg-gray-700" required/>
             </div>
             <div className="flex justify-end mt-6">
-                <button type="submit" className="bg-primary-600 text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700">Adicionar Despesa</button>
+                <button type="submit" className="bg-primary-600 text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700">{editingExpense ? "Salvar Alterações" : "Adicionar Despesa"}</button>
             </div>
         </form>
       </Modal>
@@ -137,7 +207,7 @@ const Finances: React.FC = () => {
 };
 
 
-const IncomeTable: React.FC<{payments: Payment[], deletePayment: (id: string) => void, formatCurrency: (v: number) => string}> = ({payments, deletePayment, formatCurrency}) => (
+const IncomeTable: React.FC<{payments: Payment[], deletePayment: (id: string) => void, editPayment: (payment: Payment) => void, formatCurrency: (v: number) => string}> = ({payments, deletePayment, editPayment, formatCurrency}) => (
     <table className="min-w-full leading-normal">
         <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
@@ -154,7 +224,10 @@ const IncomeTable: React.FC<{payments: Payment[], deletePayment: (id: string) =>
                 <td className="px-5 py-5 border-b border-gray-200 dark:border-gray-600 text-sm"><p className="text-green-600 dark:text-green-400 font-semibold">{formatCurrency(payment.amount)}</p></td>
                 <td className="px-5 py-5 border-b border-gray-200 dark:border-gray-600 text-sm"><p className="text-gray-900 dark:text-white">{new Date(payment.date).toLocaleDateString('pt-BR')}</p></td>
                 <td className="px-5 py-5 border-b border-gray-200 dark:border-gray-600 text-sm text-right">
-                    <button onClick={() => deletePayment(payment.id)} className="text-red-500 hover:text-red-700"><Trash2 className="w-5 h-5" /></button>
+                    <div className="flex justify-end gap-2">
+                        <button onClick={() => editPayment(payment)} className="text-blue-500 hover:text-blue-700"><Edit2 className="w-5 h-5" /></button>
+                        <button onClick={() => deletePayment(payment.id)} className="text-red-500 hover:text-red-700"><Trash2 className="w-5 h-5" /></button>
+                    </div>
                 </td>
             </tr>
         ))}
@@ -162,7 +235,7 @@ const IncomeTable: React.FC<{payments: Payment[], deletePayment: (id: string) =>
     </table>
 );
 
-const ExpenseTable: React.FC<{expenses: Expense[], deleteExpense: (id: string) => void, formatCurrency: (v: number) => string}> = ({expenses, deleteExpense, formatCurrency}) => (
+const ExpenseTable: React.FC<{expenses: Expense[], deleteExpense: (id: string) => void, editExpense: (expense: Expense) => void, formatCurrency: (v: number) => string}> = ({expenses, deleteExpense, editExpense, formatCurrency}) => (
     <table className="min-w-full leading-normal">
         <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
@@ -181,8 +254,10 @@ const ExpenseTable: React.FC<{expenses: Expense[], deleteExpense: (id: string) =
                 <td className="px-5 py-5 border-b border-gray-200 dark:border-gray-600 text-sm"><p className="text-red-600 dark:text-red-400 font-semibold">{formatCurrency(expense.amount)}</p></td>
                 <td className="px-5 py-5 border-b border-gray-200 dark:border-gray-600 text-sm"><p className="text-gray-900 dark:text-white">{new Date(expense.date).toLocaleDateString('pt-BR')}</p></td>
                 <td className="px-5 py-5 border-b border-gray-200 dark:border-gray-600 text-sm text-right">
-                    <button onClick={() => deleteExpense(expense.id)} className="text-red-500 hover:text-red-700"><Trash2 className="w-5 h-5" /></button>
-
+                    <div className="flex justify-end gap-2">
+                        <button onClick={() => editExpense(expense)} className="text-blue-500 hover:text-blue-700"><Edit2 className="w-5 h-5" /></button>
+                        <button onClick={() => deleteExpense(expense.id)} className="text-red-500 hover:text-red-700"><Trash2 className="w-5 h-5" /></button>
+                    </div>
                 </td>
             </tr>
         ))}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Building, LogIn, Eye } from 'lucide-react';
@@ -8,7 +8,14 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, currentUser, loading } = useAuth();
+
+  // Se já estiver logado, redireciona para o dashboard
+  useEffect(() => {
+    if (!loading && currentUser) {
+      navigate('/');
+    }
+  }, [currentUser, loading, navigate]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

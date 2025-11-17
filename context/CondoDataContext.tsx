@@ -13,6 +13,10 @@ interface CondoDataContextType {
   addPayment: (payment: Omit<Payment, 'id'>) => void | Promise<void>;
   addExpense: (expense: Omit<Expense, 'id'>) => void | Promise<void>;
   addUser: (user: Omit<User, 'id'>) => void | Promise<void>;
+  updateResident: (id: string, resident: Omit<Resident, 'id'>) => void | Promise<void>;
+  updatePayment: (id: string, payment: Omit<Payment, 'id'>) => void | Promise<void>;
+  updateExpense: (id: string, expense: Omit<Expense, 'id'>) => void | Promise<void>;
+  updateUser: (id: string, user: Omit<User, 'id'>) => void | Promise<void>;
   deleteResident: (id: string) => void | Promise<void>;
   deletePayment: (id: string) => void | Promise<void>;
   deleteExpense: (id: string) => void | Promise<void>;

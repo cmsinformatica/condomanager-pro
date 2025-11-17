@@ -97,7 +97,7 @@ const ResidentView: React.FC = () => {
             </div>
             <Link to="/login" className="flex items-center text-sm font-medium text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300">
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Voltar para o Login
+                Voltar
             </Link>
         </div>
         
